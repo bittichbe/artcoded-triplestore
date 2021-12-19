@@ -1,0 +1,5 @@
+spring:
+  artemis:
+    broker-url: ${ARTEMIS_URL:tcp://localhost:61616}
+    user: ${ARTEMIS_USER:root}
+    password: ${ARTEMIS_PASSWORD:root}

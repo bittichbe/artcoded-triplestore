@@ -35,6 +35,3 @@ public interface QueryParserUtil {
     return UpdateFactory.create(query);
   }
 }
-class QueryParserUtil {
-  
-}

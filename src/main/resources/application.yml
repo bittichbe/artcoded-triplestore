@@ -1,7 +1,12 @@
 server:
   port: ${SERVER_PORT:0}
 
-sparql:
-  endpoint:
-    read: http://localhost:3030/ds/query
-    update: http://localhost:3030/ds/update
+triplestore:
+  database:
+    dir: ${TRIPLESTORE_DB_PATH:/tmp/tdb2}
+
+spring:
+  config:
+    import:
+      - classpath:config/security.yml
+      - classpath:config/artemis.yml
