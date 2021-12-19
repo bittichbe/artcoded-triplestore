@@ -49,6 +49,6 @@ public class SparqlEndpoint {
       this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
       return ResponseEntity.noContent().build();
     }
-    return ResponseEntity.badRequest().build();
+    return ResponseEntity.ok().build(); // just a ping
   }
 }
