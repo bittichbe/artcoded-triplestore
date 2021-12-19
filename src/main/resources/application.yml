@@ -1,0 +1,7 @@
+server:
+  port: ${SERVER_PORT:0}
+
+sparql:
+  endpoint:
+    read: http://localhost:3030/ds/query
+    update: http://localhost:3030/ds/update
