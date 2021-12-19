@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import tech.artcoded.triplestore.tdb.TDBService;
 
 
 import javax.servlet.http.HttpServletRequest;
@@ -22,9 +23,11 @@ import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 @CrossOrigin("*")
 public class SparqlEndpoint {
   private final ProducerTemplate producerTemplate;
+  private final TDBService tdbService;
 
-  public SparqlEndpoint(ProducerTemplate producerTemplate) {
+  public SparqlEndpoint(ProducerTemplate producerTemplate, TDBService tdbService) {
     this.producerTemplate = producerTemplate;
+    this.tdbService = tdbService;
   }
 
   @RequestMapping(value = "",
@@ -36,9 +39,9 @@ public class SparqlEndpoint {
                                                    HttpServletRequest request) {
     if (StringUtils.isNotEmpty(query)) {
     String accept = request.getHeader(ACCEPT);
-      var response = this.producerTemplate.requestBodyAndHeader("jms:queue:sparql-read", query,
-                                                                "accept", accept,
-                                                                SparqlResult.class);
+      this.producerTemplate.sendBodyAndHeader("jms:queue:sparql-read", ExchangePattern.InOnly, query,
+                                                                "accept", accept);
+      var response = tdbService.executeQuery(query, accept);
       return ResponseEntity.status(200).header(CONTENT_TYPE, response.getContentType())
                                 .body(response.getBody());
     }

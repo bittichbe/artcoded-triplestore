@@ -1,12 +1,18 @@
+application:
+  basePath: ${DATA_DIR:/tmp}
 server:
   port: ${SERVER_PORT:0}
 
 triplestore:
   database:
-    dir: ${TRIPLESTORE_DB_PATH:/tmp/tdb2}
+    dir: ${TRIPLESTORE_DB_PATH:${application.basePath}/tdb2}
+sparql:
+  update:
+    failure:
+      directory: ${SPARQL_UPDATE_FAILURE_DIRECTORY:${application.basePath}/update-failure}
 
 spring:
   config:
     import:
-      - classpath:config/security.yml
-      - classpath:config/artemis.yml
+      - ${SECURITY_CONFIG:classpath:config/security-disabled.yml}
+      - ${ARTEMIS_CONFIG:classpath:config/artemis-embedded.yml}

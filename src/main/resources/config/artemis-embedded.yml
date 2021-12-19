@@ -1,0 +1,5 @@
+spring:
+  artemis:
+    embedded:
+      persistent: true
+      data-directory: ${application.basePath}/artemis
