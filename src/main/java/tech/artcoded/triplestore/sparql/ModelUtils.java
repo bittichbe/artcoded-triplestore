@@ -3,6 +3,7 @@ package tech.artcoded.triplestore.sparql;
 import lombok.SneakyThrows;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.ResultSet;
@@ -17,6 +18,7 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.resultset.ResultSetLang;
+import org.apache.jena.sparql.resultset.ResultsFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +113,7 @@ public interface ModelUtils {
     return RDFLanguages.nameToLang(lang);
   }
 
-  static Lang contentTypeToLang(String contentType) {
+  static Lang contentTypeToLang(String contentType, Lang fallback) {
     try {
       Lang lang = RDFLanguages.contentTypeToLang(contentType);
       if (lang != null) {
@@ -121,7 +123,7 @@ public interface ModelUtils {
     catch (Exception exc) {
       log.error("unknown content type, swicth to default", exc);
     }
-    return Lang.TTL;
+    return fallback;
   }
 
   static String toString(Model model, Lang lang) {
@@ -220,33 +222,52 @@ public interface ModelUtils {
     return newModel;
   }
 
-  static SparqlResult tryFormat(ResultSet resultSet, Lang lang) {
+  static SparqlResult tryFormat(ResultSet resultSet, String contentType) {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    var contentType = lang.getContentType();
+    var ct = contentType;
     try {
-      ResultSetFormatter.output(baos, resultSet, lang);
+      ResultSetFormatter.output(baos, resultSet, ResultsFormat.lookup(ct));
     }
     catch (Exception ex) {
-      log.error("could not format with lang {}", lang);
+      Lang rsJson = ResultSetLang.RS_JSON;
+      log.error("could not format content type, fallback with lang {}", rsJson);
       ResultSetFormatter.outputAsJSON(baos, resultSet);
-      contentType = ResultSetLang.RS_JSON.getContentType();
+      ct = rsJson.getContentType().getContentTypeStr();
     }
-    return SparqlResult.builder().contentType(contentType.getContentTypeStr())
+    return SparqlResult.builder().contentType(ct)
                        .body(IOUtils.toString(baos.toByteArray(), StandardCharsets.UTF_8.name())).build();
   }
 
-  static SparqlResult tryFormat(Boolean ask, Lang lang) {
-    var contentType = lang.getContentType();
+    static SparqlResult tryFormat(Boolean ask, String contentType) {
+    var ct = contentType;
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try {
-      ResultSetFormatter.output(baos, ask, lang);
+      ResultSetFormatter.output(baos, ask, RDFLanguages.contentTypeToLang(ContentType.create(ct)));
     }
     catch (Exception ex) {
-      log.error("could not format with lang {}", lang);
+      Lang rsJson = ResultSetLang.RS_JSON;
+      log.error("could not format content type, fallback with lang {}", rsJson);
+
       ResultSetFormatter.outputAsJSON(baos, ask);
-      contentType = ResultSetLang.RS_JSON.getContentType();
+      ct = rsJson.getContentType().getContentTypeStr();
     }
-    return SparqlResult.builder().contentType(contentType.getContentTypeStr())
+    return SparqlResult.builder().contentType(ct)
                        .body(IOUtils.toString(baos.toByteArray(), StandardCharsets.UTF_8.name())).build();
+  }
+
+  static SparqlResult tryFormat(Model model, String contentType) {
+    var ct = contentType;
+    String body = null;
+    try {
+     body = ModelUtils.toString(model, RDFLanguages.contentTypeToLang(ContentType.create(ct)));
+    }
+    catch (Exception ex) {
+      Lang rsJson = ResultSetLang.RS_JSON;
+      log.error("could not format content type, fallback with lang {}", rsJson);
+      body = ModelUtils.toString(model, rsJson);
+      ct = rsJson.getContentType().getContentTypeStr();
+    }
+    return SparqlResult.builder().contentType(ct)
+                       .body(body).build();
   }
 }

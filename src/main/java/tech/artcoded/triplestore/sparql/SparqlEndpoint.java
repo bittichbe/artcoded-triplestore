@@ -55,7 +55,7 @@ public class SparqlEndpoint {
         return executeRead(query, accept);
       }
       else if (operation instanceof UpdateRequest) {
-        return executeUpdate(query);
+        return executeUpdate(query, accept);
       }
     }
     return ResponseEntity.ok().build(); // just a ping
@@ -69,8 +69,9 @@ public class SparqlEndpoint {
                          .body(response.getBody());
   }
 
-  ResponseEntity<String> executeUpdate(String update) {
+  ResponseEntity<String> executeUpdate(String update, String accept) {
     this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
-    return ResponseEntity.noContent().build();
+    return ResponseEntity.status(200).header(CONTENT_TYPE, accept)
+            .body("{}");
   }
 }
