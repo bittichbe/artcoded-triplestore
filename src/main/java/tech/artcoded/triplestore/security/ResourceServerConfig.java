@@ -13,7 +13,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 @Configuration
 @EnableWebSecurity
-@ConditionalOnProperty(prefix = "application.security", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "application.security",
+                       name = "enabled",
+                       havingValue = "true")
 public class ResourceServerConfig extends WebSecurityConfigurerAdapter {
 
   @Override

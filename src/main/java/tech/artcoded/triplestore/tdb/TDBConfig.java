@@ -16,9 +16,9 @@ public class TDBConfig {
   private String tripleStoreDir;
 
   @Bean(destroyMethod = "close")
-  public Dataset database(){
+  public Dataset database() {
     File dir = new File(tripleStoreDir);
-    if(!dir.exists()){
+    if (!dir.exists()) {
       log.info("creating folder {}: {}", tripleStoreDir, dir.mkdirs());
     }
     return TDB2Factory.connectDataset(tripleStoreDir);

@@ -72,6 +72,6 @@ public class SparqlEndpoint {
   ResponseEntity<String> executeUpdate(String update, String accept) {
     this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
     return ResponseEntity.status(200).header(CONTENT_TYPE, accept)
-            .body("{}");
+                         .body("{}");
   }
 }

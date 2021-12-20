@@ -26,14 +26,14 @@ public class UpdateRouteBuilder extends RouteBuilder {
             .to(ExchangePattern.InOnly, "jms:queue:sparql-update-failure");
 
     from("jms:queue:sparql-update")
-        .routeId("UpdateRoute::EntryPoint")
-         .setProperty("oldBody", body())
-        .log(LoggingLevel.INFO,"receiving update query:\n ${body}")
-        .bean(() -> this, "process")
-        .log(LoggingLevel.DEBUG, "update done");
+            .routeId("UpdateRoute::EntryPoint")
+            .setProperty("oldBody", body())
+            .log(LoggingLevel.INFO, "receiving update query:\n ${body}")
+            .bean(() -> this, "process")
+            .log(LoggingLevel.DEBUG, "update done");
   }
 
   public void process(@Body String query) {
-     sparqlClient.executeUpdateQuery(query);
+    sparqlClient.executeUpdateQuery(query);
   }
 }

@@ -18,7 +18,7 @@ public class ReadRouteBuilder extends RouteBuilder {
 
     from("jms:queue:sparql-read")
             .routeId("ReadRoute::EntryPoint")
-            .log(LoggingLevel.INFO,"receiving query:\n ${body}");
+            .log(LoggingLevel.INFO, "receiving query:\n ${body}");
     ;
   }
 }

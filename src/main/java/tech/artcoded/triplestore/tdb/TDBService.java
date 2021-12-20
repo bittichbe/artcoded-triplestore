@@ -3,17 +3,11 @@ package tech.artcoded.triplestore.tdb;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Dataset;
-import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
-import org.apache.jena.riot.resultset.ResultSetLang;
-import org.apache.jena.sparql.util.QueryUtils;
-import org.apache.jena.system.Txn;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateProcessor;
 import org.apache.jena.update.UpdateRequest;
@@ -22,7 +16,6 @@ import tech.artcoded.triplestore.sparql.ModelUtils;
 import tech.artcoded.triplestore.sparql.QueryParserUtil;
 import tech.artcoded.triplestore.sparql.SparqlResult;
 
-import static tech.artcoded.triplestore.sparql.ModelUtils.contentTypeToLang;
 import static tech.artcoded.triplestore.sparql.QueryParserUtil.parseQuery;
 
 @Service
@@ -50,7 +43,8 @@ public class TDBService {
       };
       ds.end();
       return result;
-    } catch (Exception exc){
+    }
+    catch (Exception exc) {
       ds.abort();
       throw exc;
     }
@@ -60,14 +54,15 @@ public class TDBService {
   @SneakyThrows
   public void executeUpdateQuery(String updateQuery) {
     ds.begin(ReadWrite.WRITE);
-    try{
+    try {
       UpdateRequest updates = QueryParserUtil.parseUpdate(updateQuery);
       UpdateProcessor updateProcessor =
               UpdateExecutionFactory.create(updates, ds);
       updateProcessor.execute();
       ds.commit();
       ds.end();
-    }catch (Exception exc){
+    }
+    catch (Exception exc) {
       ds.abort();
       throw exc;
     }

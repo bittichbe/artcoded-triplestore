@@ -6,14 +6,8 @@ import org.apache.jena.query.QueryException;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
-import org.apache.jena.vocabulary.XSD;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public interface QueryParserUtil {
   Logger LOGGER = LoggerFactory.getLogger(QueryParserUtil.class);
@@ -32,6 +26,7 @@ public interface QueryParserUtil {
       }
     }
   }
+
   static Query parseQuery(String query) {
     return QueryFactory.create(query);
   }

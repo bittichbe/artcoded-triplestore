@@ -238,7 +238,7 @@ public interface ModelUtils {
                        .body(IOUtils.toString(baos.toByteArray(), StandardCharsets.UTF_8.name())).build();
   }
 
-    static SparqlResult tryFormat(Boolean ask, String contentType) {
+  static SparqlResult tryFormat(Boolean ask, String contentType) {
     var ct = contentType;
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try {
@@ -259,7 +259,7 @@ public interface ModelUtils {
     var ct = contentType;
     String body = null;
     try {
-     body = ModelUtils.toString(model, RDFLanguages.contentTypeToLang(ContentType.create(ct)));
+      body = ModelUtils.toString(model, RDFLanguages.contentTypeToLang(ContentType.create(ct)));
     }
     catch (Exception ex) {
       Lang rsJson = ResultSetLang.RS_JSON;
