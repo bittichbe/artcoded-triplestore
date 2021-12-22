@@ -1,5 +1,6 @@
 package tech.artcoded.triplestore.sparql;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.ProducerTemplate;
 import org.apache.commons.lang3.StringUtils;
@@ -31,14 +32,15 @@ import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 @Controller()
 @RequestMapping("/sparql")
 @CrossOrigin("*")
+@Slf4j
 public class SparqlEndpoint {
   private final ProducerTemplate producerTemplate;
   private final TDBService tdbService;
 
   @Value("${application.security.enabled}")
   private boolean securityEnabled;
-  @Value(value = "${application.security.sparql.update.allowedAuthorities:#{null}}")
-  private Optional<List<String>> allowedAuthorities;
+  @Value(value = "${application.security.sparql.update.allowedRoles:#{null}}")
+  private Optional<List<String>> allowedRoles;
 
   public SparqlEndpoint(ProducerTemplate producerTemplate, TDBService tdbService) {
     this.producerTemplate = producerTemplate;
@@ -95,13 +97,15 @@ public class SparqlEndpoint {
 
   boolean canUpdate() {
     if (securityEnabled) {
-      List<String> allowedRoles = allowedAuthorities.stream().flatMap(Collection::stream).toList();
+      List<String> roles = allowedRoles.stream().flatMap(Collection::stream)
+              .map("ROLE_"::concat).toList();
       Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
       return ofNullable(authentication)
               .stream()
               .map(Authentication::getAuthorities)
               .flatMap(a -> a.stream().map(GrantedAuthority::getAuthority))
-              .anyMatch(allowedRoles::contains);
+              .peek(log::info)
+              .anyMatch(roles::contains);
 
     }
     return true;
