@@ -5,7 +5,12 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.query.Query;
 import org.apache.jena.update.UpdateRequest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,7 +19,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import tech.artcoded.triplestore.tdb.TDBService;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
+import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 
@@ -25,6 +34,11 @@ import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 public class SparqlEndpoint {
   private final ProducerTemplate producerTemplate;
   private final TDBService tdbService;
+
+  @Value("${application.security.enabled}")
+  private boolean securityEnabled;
+  @Value(value = "${application.security.sparql.update.allowedAuthorities:#{null}}")
+  private Optional<List<String>> allowedAuthorities;
 
   public SparqlEndpoint(ProducerTemplate producerTemplate, TDBService tdbService) {
     this.producerTemplate = producerTemplate;
@@ -55,6 +69,9 @@ public class SparqlEndpoint {
         return executeRead(query, accept);
       }
       else if (operation instanceof UpdateRequest) {
+        if (!canUpdate()) {
+          return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You cannot perform this action");
+        }
         return executeUpdate(query, accept);
       }
     }
@@ -70,8 +87,24 @@ public class SparqlEndpoint {
   }
 
   ResponseEntity<String> executeUpdate(String update, String accept) {
+
     this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
     return ResponseEntity.status(200).header(CONTENT_TYPE, accept)
                          .body("{}");
   }
+
+  boolean canUpdate() {
+    if (securityEnabled) {
+      List<String> allowedRoles = allowedAuthorities.stream().flatMap(Collection::stream).toList();
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      return ofNullable(authentication)
+              .stream()
+              .map(Authentication::getAuthorities)
+              .flatMap(a -> a.stream().map(GrantedAuthority::getAuthority))
+              .anyMatch(allowedRoles::contains);
+
+    }
+    return true;
+  }
+
 }
