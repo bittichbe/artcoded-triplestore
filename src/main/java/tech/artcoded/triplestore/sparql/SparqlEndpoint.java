@@ -1,5 +1,6 @@
 package tech.artcoded.triplestore.sparql;
 
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.ProducerTemplate;
@@ -7,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.query.Query;
 import org.apache.jena.update.UpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,6 +25,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpHeaders.ACCEPT;
@@ -32,6 +35,7 @@ import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 @Controller()
 @RequestMapping("/sparql")
 @CrossOrigin("*")
+@ConfigurationProperties("application.security.sparql.update")
 @Slf4j
 public class SparqlEndpoint {
   private final ProducerTemplate producerTemplate;
@@ -39,8 +43,9 @@ public class SparqlEndpoint {
 
   @Value("${application.security.enabled}")
   private boolean securityEnabled;
-  @Value(value = "${application.security.sparql.update.allowedRoles:#{null}}")
-  private Optional<List<String>> allowedRoles;
+
+  @Setter
+  private Set<String> allowedRoles;
 
   public SparqlEndpoint(ProducerTemplate producerTemplate, TDBService tdbService) {
     this.producerTemplate = producerTemplate;
@@ -97,14 +102,17 @@ public class SparqlEndpoint {
 
   boolean canUpdate() {
     if (securityEnabled) {
-      List<String> roles = allowedRoles.stream().flatMap(Collection::stream)
-              .map("ROLE_"::concat).toList();
+      List<String> roles = ofNullable(allowedRoles).orElseGet(Set::of)
+              .stream()
+              .map("ROLE_"::concat)
+              .peek(log::debug)
+              .toList();
       Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
       return ofNullable(authentication)
               .stream()
               .map(Authentication::getAuthorities)
               .flatMap(a -> a.stream().map(GrantedAuthority::getAuthority))
-              .peek(log::info)
+              .peek(log::debug)
               .anyMatch(roles::contains);
 
     }
