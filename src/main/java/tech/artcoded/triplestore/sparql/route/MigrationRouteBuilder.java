@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static java.util.Optional.ofNullable;
+import static org.apache.commons.compress.utils.FileNameUtils.getBaseName;
 
 @Component
 public class MigrationRouteBuilder extends RouteBuilder {
@@ -53,15 +54,15 @@ public class MigrationRouteBuilder extends RouteBuilder {
             .log("Exception occurred due: ${exception.message}")
     ;
 
-    from("file:{{triplestore.migration.dir}}?sortBy=file:modified;file:name")
+    from("file:{{triplestore.migration.dir}}?sortBy=file:name;file:modified")
             .routeId("MigrationRoute::Entrypoint")
-            .log("receiving file '${headers.%s}', will add triples in the triplestore".formatted(Exchange.FILE_NAME))
+            .log("receiving file '${headers.%s}', will execute migration to the triplestore".formatted(Exchange.FILE_NAME))
             .convertBodyTo(byte[].class)
             .choice()
               .when(header(Exchange.FILE_NAME).endsWith("graph"))
                   .bean(()-> this, "addGraphToCache")
               .otherwise()
-                  .setProperty(HEADER_TITLE, simple("'${headers.%s}', has been added to the triplestore".formatted(Exchange.FILE_NAME)))
+                  .setProperty(HEADER_TITLE, simple("'${headers.%s}', has been executed to the triplestore".formatted(Exchange.FILE_NAME)))
                   .setProperty(HEADER_TYPE, constant(SYNC_FILE_TRIPLESTORE))
                   .bean(() -> this, "performMigration")
                   .setHeader(CORRELATION_ID, body())
@@ -73,7 +74,7 @@ public class MigrationRouteBuilder extends RouteBuilder {
 
   void addGraphToCache(@Body byte[] file,
                        @Header(Exchange.FILE_NAME) String fileName){
-    GRAPH_CACHE.put(fileName, IOUtils.toString(file, StandardCharsets.UTF_8.name()));
+    GRAPH_CACHE.put(getBaseName(fileName), IOUtils.toString(file, StandardCharsets.UTF_8.name()));
   }
 
   String performMigration(@Body byte[] file,
@@ -87,7 +88,7 @@ public class MigrationRouteBuilder extends RouteBuilder {
 
     Lang lang = RDFLanguages.filenameToLang(fileName);
     Model model = ModelUtils.toModel(new ByteArrayInputStream(file), lang);
-    String graph = ofNullable(GRAPH_CACHE.getIfPresent(fileName)).orElseGet(() -> defaultGraph);
+    String graph = ofNullable(GRAPH_CACHE.getIfPresent(getBaseName(fileName))).orElseGet(() -> defaultGraph);
     tdbService.batchLoadData(graph, model);
     return UUID.randomUUID().toString();
 

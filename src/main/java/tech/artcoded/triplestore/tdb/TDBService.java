@@ -87,7 +87,7 @@ public class TDBService {
   }
 
   public void batchLoadData(String graph, Model model) {
-    log.debug("running import triples with batch size {}, model size: {}, graph: <{}>", batchSize, model.size(), graph);
+    log.info("running import triples with batch size {}, model size: {}, graph: <{}>", batchSize, model.size(), graph);
     List<Triple> triples = model.getGraph().find().toList(); //duplicate so we can splice
     Lists.partition(triples, batchSize)
          .stream()
@@ -98,6 +98,7 @@ public class TDBService {
            batch.forEach(batchGraph::add);
            return batchModel;
          })
+         .peek(batchModel -> log.info("running import triples with model size {}",  batchModel.size()))
          .forEach(batchModel -> this.insertModelOrRetry (graph, batchModel));
   }
 
