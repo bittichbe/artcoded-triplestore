@@ -20,7 +20,6 @@ import tech.artcoded.triplestore.tdb.TDBService;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 
 import static java.util.Optional.ofNullable;
@@ -39,9 +38,9 @@ public class MigrationRouteBuilder extends RouteBuilder {
   private String defaultGraph;
 
   private static final Cache<String, String> GRAPH_CACHE = Caffeine.newBuilder()
-                                                           .expireAfterAccess(Duration.ofMinutes(5))
-                                                           .maximumSize(1000)
-                                                           .build();
+                                                                   .expireAfterAccess(Duration.ofMinutes(5))
+                                                                   .maximumSize(1000)
+                                                                   .build();
 
   public MigrationRouteBuilder(TDBService tdbService) {
     this.tdbService = tdbService;
@@ -59,21 +58,21 @@ public class MigrationRouteBuilder extends RouteBuilder {
             .log("receiving file '${headers.%s}', will execute migration to the triplestore".formatted(Exchange.FILE_NAME))
             .convertBodyTo(byte[].class)
             .choice()
-              .when(header(Exchange.FILE_NAME).endsWith("graph"))
-                  .bean(()-> this, "addGraphToCache")
-              .otherwise()
-                  .setProperty(HEADER_TITLE, simple("'${headers.%s}', has been executed to the triplestore".formatted(Exchange.FILE_NAME)))
-                  .setProperty(HEADER_TYPE, constant(SYNC_FILE_TRIPLESTORE))
-                  .bean(() -> this, "performMigration")
-                  .setHeader(CORRELATION_ID, body())
-                  .setHeader(HEADER_TITLE, exchangeProperty(HEADER_TITLE))
-                  .setHeader(HEADER_TYPE, exchangeProperty(HEADER_TYPE))
-                  .to(ExchangePattern.InOnly, NOTIFICATION_ENDPOINT)
-              .endChoice();
+            .when(header(Exchange.FILE_NAME).endsWith("graph"))
+            .bean(() -> this, "addGraphToCache")
+            .otherwise()
+            .setProperty(HEADER_TITLE, simple("'${headers.%s}', has been executed to the triplestore".formatted(Exchange.FILE_NAME)))
+            .setProperty(HEADER_TYPE, constant(SYNC_FILE_TRIPLESTORE))
+            .bean(() -> this, "performMigration")
+            .setHeader(CORRELATION_ID, body())
+            .setHeader(HEADER_TITLE, exchangeProperty(HEADER_TITLE))
+            .setHeader(HEADER_TYPE, exchangeProperty(HEADER_TYPE))
+            .to(ExchangePattern.InOnly, NOTIFICATION_ENDPOINT)
+            .endChoice();
   }
 
   void addGraphToCache(@Body byte[] file,
-                       @Header(Exchange.FILE_NAME) String fileName){
+                       @Header(Exchange.FILE_NAME) String fileName) {
     GRAPH_CACHE.put(getBaseName(fileName), IOUtils.toString(file, StandardCharsets.UTF_8.name()));
   }
 
@@ -81,9 +80,9 @@ public class MigrationRouteBuilder extends RouteBuilder {
                           @Header(Exchange.FILE_NAME) String fileName) {
     String extension = FileNameUtils.getExtension(fileName);
 
-    if("sparql".equalsIgnoreCase(extension)){
+    if ("sparql".equalsIgnoreCase(extension)) {
       tdbService.executeUpdateQuery(IOUtils.toString(file, StandardCharsets.UTF_8.name()));
-       return UUID.randomUUID().toString();
+      return UUID.randomUUID().toString();
     }
 
     Lang lang = RDFLanguages.filenameToLang(fileName);

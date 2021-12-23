@@ -80,6 +80,7 @@ public class TDBService {
     }
 
   }
+
   public void insertModel(String graphUri, Model model) {
     var triples = ModelUtils.toString(model, RDFLanguages.NTRIPLES);
     String updateQuery = String.format("INSERT DATA { GRAPH <%s> { %s } }", graphUri, triples);
@@ -98,8 +99,8 @@ public class TDBService {
            batch.forEach(batchGraph::add);
            return batchModel;
          })
-         .peek(batchModel -> log.info("running import triples with model size {}",  batchModel.size()))
-         .forEach(batchModel -> this.insertModelOrRetry (graph, batchModel));
+         .peek(batchModel -> log.info("running import triples with model size {}", batchModel.size()))
+         .forEach(batchModel -> this.insertModelOrRetry(graph, batchModel));
   }
 
   private void insertModelOrRetry(String graph, Model batchModel) {

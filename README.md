@@ -1,6 +1,7 @@
 # artcoded-triplestore
 
 e.g using security:
+
 ```
   triplestore:
     image: nbittich/triplestore
