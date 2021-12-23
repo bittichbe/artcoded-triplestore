@@ -16,6 +16,6 @@ public class UpdateFailureRouteBuilder extends RouteBuilder {
     from("jms:queue:sparql-update-failure")
             .routeId("UpdateFailure::Entrypoint")
             .setHeader(Exchange.FILE_NAME, () -> FilenameUtils.normalize(now().format(ISO_LOCAL_DATE_TIME).concat(".sparql")))
-            .to(ExchangePattern.InOnly,"file:{{sparql.update.failure.directory}}");
+            .to(ExchangePattern.InOnly, "file:{{sparql.update.failure.directory}}");
   }
 }

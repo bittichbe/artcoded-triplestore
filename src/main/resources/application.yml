@@ -8,6 +8,7 @@ triplestore:
   maxRetry: ${MAX_RETRY:5}
   database:
     dir: ${TRIPLESTORE_DB_PATH:${application.basePath}/tdb2}
+    unionDefaultGraph: ${UNION_DEFAULT_GRAPH:true}
   migration:
     dir: ${MIGRATION_PATH:${application.basePath}/migrations}
     defaultGraph: ${MIGRATION_DEFAULT_GRAPH:https://bittich.be/application}
