@@ -8,3 +8,8 @@ spring:
 application:
   security:
     enabled: true
+    sparql:
+      update:
+        allowedRoles:
+          - ADMIN
+          - USER

@@ -262,10 +262,10 @@ public interface ModelUtils {
       body = ModelUtils.toString(model, RDFLanguages.contentTypeToLang(ContentType.create(ct)));
     }
     catch (Exception ex) {
-      Lang rsJson = ResultSetLang.RS_JSON;
-      log.error("could not format content type, fallback with lang {}", rsJson);
-      body = ModelUtils.toString(model, rsJson);
-      ct = rsJson.getContentType().getContentTypeStr();
+      Lang ttl = Lang.TURTLE;
+      log.error("could not format content type, fallback with lang {}", ttl);
+      body = ModelUtils.toString(model, ttl);
+      ct = ttl.getContentType().getContentTypeStr();
     }
     return SparqlResult.builder().contentType(ct)
                        .body(body).build();
