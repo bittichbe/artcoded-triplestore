@@ -33,7 +33,11 @@ public class UpdateRouteBuilder extends RouteBuilder {
             .transform(exceptionMessage())
             .log(LoggingLevel.ERROR, "an error occured: ${body}")
             .setBody(exchangeProperty("oldBody"))
-            .to(ExchangePattern.InOnly, "jms:queue:sparql-update-failure");
+            .choice().when(body().isNotNull())
+              .to(ExchangePattern.InOnly, "jms:queue:sparql-update-failure")
+            .otherwise()
+              .log("old body was cleared")
+            .endChoice();
 
     from("jms:queue:sparql-update")
             .routeId("UpdateRoute::EntryPoint")
