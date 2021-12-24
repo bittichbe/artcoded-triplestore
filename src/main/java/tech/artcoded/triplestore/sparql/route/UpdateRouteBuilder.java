@@ -47,6 +47,7 @@ public class UpdateRouteBuilder extends RouteBuilder {
             .setHeader(CORRELATION_ID, body())
             .setHeader(HEADER_TITLE, exchangeProperty(HEADER_TITLE))
             .setHeader(HEADER_TYPE, exchangeProperty(HEADER_TYPE))
+            .removeProperty("oldBody")
             .to(ExchangePattern.InOnly, NOTIFICATION_ENDPOINT)
     ;
   }
