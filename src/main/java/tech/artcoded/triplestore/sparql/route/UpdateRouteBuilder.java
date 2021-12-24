@@ -27,7 +27,7 @@ public class UpdateRouteBuilder extends RouteBuilder {
 
   @Override
   public void configure() throws Exception {
-    onException(Throwable.class)
+    onException(Exception.class)
             .handled(true)
             .maximumRedeliveries(5)
             .transform(exceptionMessage())
