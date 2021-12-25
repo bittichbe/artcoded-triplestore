@@ -83,7 +83,7 @@ public class SparqlEndpoint {
       return ResponseEntity.ok().build(); // just a ping
     }
     catch (Exception exc) {
-      return ResponseEntity.status(400).body("{'error': %s}".formatted(exc.getMessage()));
+      return ResponseEntity.status(400).body("error: %s".formatted(exc.getMessage()));
     }
   }
 
@@ -98,8 +98,8 @@ public class SparqlEndpoint {
   ResponseEntity<String> executeUpdate(String update) {
 
     this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
-    return ResponseEntity.status(200).contentType(MediaType.APPLICATION_JSON)
-                         .body("{'message': 'processing update'}");
+    return ResponseEntity.status(200)
+                         .body("processing update");
   }
 
   boolean canUpdate() {
