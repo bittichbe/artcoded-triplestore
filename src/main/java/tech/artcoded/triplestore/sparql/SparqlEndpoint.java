@@ -9,6 +9,7 @@ import org.apache.jena.update.UpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -97,8 +98,8 @@ public class SparqlEndpoint {
   ResponseEntity<String> executeUpdate(String update, String accept) {
 
     this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
-    return ResponseEntity.status(200).header(CONTENT_TYPE, accept)
-                         .body("{}");
+    return ResponseEntity.status(200).contentType(MediaType.APPLICATION_JSON)
+                         .body("{'message': 'processing update'}");
   }
 
   boolean canUpdate() {
