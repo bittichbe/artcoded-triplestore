@@ -77,7 +77,7 @@ public class SparqlEndpoint {
           if (!canUpdate()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You cannot perform this action");
           }
-          return executeUpdate(query, accept);
+          return executeUpdate(query);
         }
       }
       return ResponseEntity.ok().build(); // just a ping
@@ -95,7 +95,7 @@ public class SparqlEndpoint {
                          .body(response.getBody());
   }
 
-  ResponseEntity<String> executeUpdate(String update, String accept) {
+  ResponseEntity<String> executeUpdate(String update) {
 
     this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
     return ResponseEntity.status(200).contentType(MediaType.APPLICATION_JSON)
