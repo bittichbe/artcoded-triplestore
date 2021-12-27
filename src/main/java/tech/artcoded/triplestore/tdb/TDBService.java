@@ -23,6 +23,7 @@ import tech.artcoded.triplestore.sparql.SparqlResult;
 
 import java.util.List;
 
+import static tech.artcoded.triplestore.sparql.ModelUtils.tryFormat;
 import static tech.artcoded.triplestore.sparql.QueryParserUtil.parseQuery;
 
 @Service
@@ -46,10 +47,10 @@ public class TDBService {
       QueryExecution queryExecution = QueryExecutionFactory
               .create(q, ds);
       var result = switch (q.queryType()) {
-        case ASK -> ModelUtils.tryFormat(queryExecution.execAsk(), acceptHeader);
-        case SELECT -> ModelUtils.tryFormat(queryExecution.execSelect(), acceptHeader);
-        case DESCRIBE -> ModelUtils.tryFormat(queryExecution.execDescribe(), acceptHeader);
-        case CONSTRUCT -> ModelUtils.tryFormat(queryExecution.execConstruct(), acceptHeader);
+        case ASK -> tryFormat(queryExecution.execAsk(), acceptHeader);
+        case SELECT -> tryFormat(queryExecution.execSelect(), acceptHeader);
+        case DESCRIBE -> tryFormat(queryExecution.execDescribe(), acceptHeader);
+        case CONSTRUCT -> tryFormat(queryExecution.execConstruct(), acceptHeader);
 
         default -> throw new UnsupportedOperationException(q.queryType() + " Not supported");
       };
