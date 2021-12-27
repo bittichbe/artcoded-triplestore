@@ -1,5 +1,6 @@
 package tech.artcoded.triplestore.sparql;
 
+import com.google.common.io.FileBackedOutputStream;
 import lombok.SneakyThrows;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -13,8 +14,7 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RiotException;
-import org.apache.jena.riot.resultset.ResultSetLang;
-import org.apache.jena.sparql.resultset.ResultsFormat;
+import org.apache.jena.riot.WebContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.jena.riot.WebContent.contentTypeResultsJSON;
 
 public interface ModelUtils {
 
@@ -216,30 +214,24 @@ public interface ModelUtils {
   }
 
   static SparqlResult tryFormat(ResultSet resultSet, String contentType) {
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-      ResultSetFormatter.output(baos, resultSet, ResultsFormat.lookup(contentType));
-      return SparqlResult.builder().contentType(contentType)
-                         .body(IOUtils.toString(baos.toByteArray(), StandardCharsets.UTF_8.name())).build();
+    try (FileBackedOutputStream baos = new FileBackedOutputStream(2048 * 1024, true)) {
+      ResultSetFormatter.outputAsJSON(baos, resultSet);
+      return SparqlResult.builder().contentType(WebContent.contentTypeResultsJSON)
+                         .body(IOUtils.toString(baos.asByteSource().read(), StandardCharsets.UTF_8.name())).build();
     }
-    catch (Exception ex) {
-      if (contentType.equalsIgnoreCase(contentTypeResultsJSON)) {
-        throw new RuntimeException(ex);
-      }
-      return tryFormat(resultSet, contentTypeResultsJSON);
+    catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
   static SparqlResult tryFormat(Boolean ask, String contentType) {
-    try(ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-      ResultSetFormatter.output(baos, ask, RDFLanguages.contentTypeToLang(ContentType.create(contentType)));
-      return SparqlResult.builder().contentType(contentType)
-                         .body(IOUtils.toString(baos.toByteArray(), StandardCharsets.UTF_8.name())).build();
+    try (FileBackedOutputStream baos = new FileBackedOutputStream(2048 * 1024, true)) {
+      ResultSetFormatter.outputAsJSON(baos, ask);
+      return SparqlResult.builder().contentType(WebContent.contentTypeResultsJSON)
+                         .body(IOUtils.toString(baos.asByteSource().read(), StandardCharsets.UTF_8.name())).build();
     }
     catch (Exception ex) {
-      if (contentType.equalsIgnoreCase(contentTypeResultsJSON)) {
-        throw new RuntimeException(ex);
-      }
-      return tryFormat(ask, contentTypeResultsJSON);
+      throw new RuntimeException(ex);
     }
   }
 

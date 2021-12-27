@@ -41,12 +41,11 @@ public class TDBService {
   }
 
   public SparqlResult executeQuery(String query, String acceptHeader) {
+    var q = parseQuery(query);
     ds.begin(ReadWrite.READ);
-    try {
-      var q = parseQuery(query);
-      QueryExecution queryExecution = QueryExecutionFactory
-              .create(q, ds);
-      var result = switch (q.queryType()) {
+    try (QueryExecution queryExecution = QueryExecutionFactory
+            .create(q, ds)) {
+      return switch (q.queryType()) {
         case ASK -> tryFormat(queryExecution.execAsk(), acceptHeader);
         case SELECT -> tryFormat(queryExecution.execSelect(), acceptHeader);
         case DESCRIBE -> tryFormat(queryExecution.execDescribe(), acceptHeader);
@@ -54,13 +53,14 @@ public class TDBService {
 
         default -> throw new UnsupportedOperationException(q.queryType() + " Not supported");
       };
-      ds.end();
-      return result;
     }
     catch (Exception exc) {
-      ds.abort();
-      throw exc;
+      log.error("exception occurred", exc);
     }
+    finally {
+      ds.end();
+    }
+    return null;
 
   }
 
