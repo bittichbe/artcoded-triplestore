@@ -45,7 +45,7 @@ public class UpdateRouteBuilder extends RouteBuilder {
             .log(LoggingLevel.DEBUG, "receiving update query:\n ${body}")
             .bean(() -> this, "process")
             .log(LoggingLevel.DEBUG, "update done")
-            .setProperty(HEADER_TITLE, simple("Update query, has been executed to the triplestore"))
+            .setProperty(HEADER_TITLE, simple("Update query has been executed to the triplestore"))
             .setProperty(HEADER_TYPE, constant(UPDATE_QUERY_TRIPLESTORE))
             .transform().body(o -> UUID.randomUUID().toString())
             .setHeader(CORRELATION_ID, body())
