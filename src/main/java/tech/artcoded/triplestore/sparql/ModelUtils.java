@@ -32,6 +32,8 @@ public interface ModelUtils {
 
   String DEFAULT_WELL_KNOWN_PREFIX = "http://bittich.be/.well-known/genid";
 
+  int THRESHOLD = 2048 * 1024;
+
   Logger log = LoggerFactory.getLogger(ModelUtils.class);
 
   static Model toModel(String value, String lang) {
@@ -214,7 +216,7 @@ public interface ModelUtils {
   }
 
   static SparqlResult tryFormat(ResultSet resultSet, String contentType) {
-    try (FileBackedOutputStream baos = new FileBackedOutputStream(2048 * 1024, true)) {
+    try (FileBackedOutputStream baos = new FileBackedOutputStream(THRESHOLD, true)) {
       ResultSetFormatter.outputAsJSON(baos, resultSet);
       return SparqlResult.builder().contentType(WebContent.contentTypeResultsJSON)
                          .body(IOUtils.toString(baos.asByteSource().read(), StandardCharsets.UTF_8.name())).build();
@@ -225,7 +227,7 @@ public interface ModelUtils {
   }
 
   static SparqlResult tryFormat(Boolean ask, String contentType) {
-    try (FileBackedOutputStream baos = new FileBackedOutputStream(2048 * 1024, true)) {
+    try (FileBackedOutputStream baos = new FileBackedOutputStream(THRESHOLD, true)) {
       ResultSetFormatter.outputAsJSON(baos, ask);
       return SparqlResult.builder().contentType(WebContent.contentTypeResultsJSON)
                          .body(IOUtils.toString(baos.asByteSource().read(), StandardCharsets.UTF_8.name())).build();

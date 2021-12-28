@@ -12,6 +12,7 @@ import org.apache.jena.query.ReadWrite;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.system.Txn;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateProcessor;
 import org.apache.jena.update.UpdateRequest;
@@ -22,6 +23,7 @@ import tech.artcoded.triplestore.sparql.QueryParserUtil;
 import tech.artcoded.triplestore.sparql.SparqlResult;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import static tech.artcoded.triplestore.sparql.ModelUtils.tryFormat;
 import static tech.artcoded.triplestore.sparql.QueryParserUtil.parseQuery;
@@ -41,44 +43,35 @@ public class TDBService {
   }
 
   public SparqlResult executeQuery(String query, String acceptHeader) {
-    var q = parseQuery(query);
-    ds.begin(ReadWrite.READ);
-    try (QueryExecution queryExecution = QueryExecutionFactory
-            .create(q, ds)) {
-      return switch (q.queryType()) {
-        case ASK -> tryFormat(queryExecution.execAsk(), acceptHeader);
-        case SELECT -> tryFormat(queryExecution.execSelect(), acceptHeader);
-        case DESCRIBE -> tryFormat(queryExecution.execDescribe(), acceptHeader);
-        case CONSTRUCT -> tryFormat(queryExecution.execConstruct(), acceptHeader);
+    Supplier<SparqlResult> _executeQuery = () -> {
+      var q = parseQuery(query);
+      try (QueryExecution queryExecution = QueryExecutionFactory
+              .create(q, ds)) {
+        return switch (q.queryType()) {
+          case ASK -> tryFormat(queryExecution.execAsk(), acceptHeader);
+          case SELECT -> tryFormat(queryExecution.execSelect(), acceptHeader);
+          case DESCRIBE -> tryFormat(queryExecution.execDescribe(), acceptHeader);
+          case CONSTRUCT -> tryFormat(queryExecution.execConstruct(), acceptHeader);
 
-        default -> throw new UnsupportedOperationException(q.queryType() + " Not supported");
-      };
-    }
-    catch (Exception exc) {
-      log.error("exception occurred", exc);
-    }
-    finally {
-      ds.end();
-    }
-    return null;
-
+          default -> throw new UnsupportedOperationException(q.queryType() + " Not supported");
+        };
+      }
+      catch (Exception exc) {
+        log.error("exception occurred", exc);
+        return null;
+      }
+    };
+    return Txn.calculateRead(ds, _executeQuery);
   }
 
   @SneakyThrows
   public void executeUpdateQuery(String updateQuery) {
-    ds.begin(ReadWrite.WRITE);
-    try {
+    Txn.executeWrite(ds,  () -> {
       UpdateRequest updates = QueryParserUtil.parseUpdate(updateQuery);
       UpdateProcessor updateProcessor =
               UpdateExecutionFactory.create(updates, ds);
       updateProcessor.execute();
-      ds.commit();
-      ds.end();
-    }
-    catch (Exception exc) {
-      ds.abort();
-      throw exc;
-    }
+    });
 
   }
 
