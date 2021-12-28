@@ -4,6 +4,8 @@ server:
   port: ${SERVER_PORT:0}
 
 triplestore:
+  query:
+    timeout: ${SECONDS_BEFORE_QUERY_TIMEOUT:30}
   batchSize: ${BATCH_SIZE:1000}
   maxRetry: ${MAX_RETRY:5}
   database:
