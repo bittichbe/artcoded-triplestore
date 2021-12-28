@@ -1,16 +1,21 @@
 package tech.artcoded.triplestore.tdb;
 
 import com.google.common.collect.Lists;
+import com.google.common.io.FileBackedOutputStream;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
+import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryExecutionFactory;
-import org.apache.jena.query.ReadWrite;
+import org.apache.jena.query.QueryExecutionDatasetBuilder;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.system.Txn;
 import org.apache.jena.update.UpdateExecutionFactory;
@@ -18,25 +23,41 @@ import org.apache.jena.update.UpdateProcessor;
 import org.apache.jena.update.UpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import tech.artcoded.triplestore.sparql.ModelUtils;
 import tech.artcoded.triplestore.sparql.QueryParserUtil;
 import tech.artcoded.triplestore.sparql.SparqlResult;
 
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import static tech.artcoded.triplestore.sparql.ModelUtils.tryFormat;
+import static org.apache.jena.query.ResultSetFormatter.output;
+import static org.apache.jena.riot.Lang.TURTLE;
+import static org.apache.jena.riot.RDFDataMgr.write;
+import static org.apache.jena.riot.resultset.ResultSetLang.RS_CSV;
+import static org.apache.jena.riot.resultset.ResultSetLang.RS_JSON;
+import static org.apache.jena.riot.resultset.ResultSetLang.RS_Text;
+import static org.apache.jena.riot.resultset.ResultSetLang.RS_XML;
 import static tech.artcoded.triplestore.sparql.QueryParserUtil.parseQuery;
 
 @Service
 @Slf4j
 public class TDBService {
+
+  private static final int THRESHOLD = 4 * 1024 * 1024;  // 4mb
+
   private final Dataset ds;
 
   @Value("${triplestore.batchSize}")
   private int batchSize;
   @Value("${triplestore.maxRetry}")
   private int maxRetry;
+  @Value("${triplestore.query.timeout}")
+  private long timeout;
 
   public TDBService(Dataset ds) {
     this.ds = ds;
@@ -45,28 +66,63 @@ public class TDBService {
   public SparqlResult executeQuery(String query, String acceptHeader) {
     Supplier<SparqlResult> _executeQuery = () -> {
       var q = parseQuery(query);
-      try (QueryExecution queryExecution = QueryExecutionFactory
-              .create(q, ds)) {
+      try (QueryExecution queryExecution = QueryExecutionDatasetBuilder.create()
+                                                                       .query(q)
+                                                                       .dataset(ds)
+                                                                       .timeout(timeout, TimeUnit.SECONDS)
+                                                                       .build()
+      ) {
         return switch (q.queryType()) {
-          case ASK -> tryFormat(queryExecution.execAsk(), acceptHeader);
-          case SELECT -> tryFormat(queryExecution.execSelect(), acceptHeader);
-          case DESCRIBE -> tryFormat(queryExecution.execDescribe(), acceptHeader);
-          case CONSTRUCT -> tryFormat(queryExecution.execConstruct(), acceptHeader);
-
+          case ASK -> tryFormat((lang, out) -> output(out, queryExecution.execAsk(), lang), acceptHeader, RS_JSON);
+          case SELECT -> tryFormat((lang, out) -> output(out, queryExecution.execSelect(), lang), acceptHeader, RS_JSON);
+          case DESCRIBE -> tryFormat((lang, out) -> write(out, queryExecution.execDescribe(), lang), acceptHeader, TURTLE);
+          case CONSTRUCT -> tryFormat((lang, out) -> write(out, queryExecution.execConstruct(), lang), acceptHeader, TURTLE);
           default -> throw new UnsupportedOperationException(q.queryType() + " Not supported");
         };
       }
       catch (Exception exc) {
         log.error("exception occurred", exc);
-        return null;
+        throw new RuntimeException(exc);
       }
     };
     return Txn.calculateRead(ds, _executeQuery);
   }
 
+  private SparqlResult tryFormat(BiConsumer<Lang, OutputStream> consumer, String contentType, Lang fallback) {
+    Lang lang = guessLang(contentType, fallback);
+    var body = writeToOutputStream(outputStream -> consumer.accept(lang, outputStream));
+
+    return SparqlResult.builder()
+                       .contentType(lang.getContentType().getContentTypeStr())
+                       .body(body)
+                       .build();
+  }
+
+  @SneakyThrows
+  private String writeToOutputStream(Consumer<OutputStream> consumer) {
+    try (var outputStream = new FileBackedOutputStream(THRESHOLD)) {
+      consumer.accept(outputStream);
+      return IOUtils.toString(outputStream.asByteSource().read(), StandardCharsets.UTF_8.name());
+    }
+
+  }
+
+  private Lang guessLang(String contentType, Lang fallback) {
+    try {
+      return Stream.concat(RDFLanguages.getRegisteredLanguages().stream(), Stream.of(RS_Text, RS_JSON, RS_XML, RS_CSV))
+                   .filter(l -> l.getContentType().equals(ContentType.create(contentType)))
+                   .findFirst().orElse(fallback);
+    }
+    catch (Exception exc) {
+      log.error("unexpected exception occurred", exc);
+      return fallback;
+    }
+
+  }
+
   @SneakyThrows
   public void executeUpdateQuery(String updateQuery) {
-    Txn.executeWrite(ds,  () -> {
+    Txn.executeWrite(ds, () -> {
       UpdateRequest updates = QueryParserUtil.parseUpdate(updateQuery);
       UpdateProcessor updateProcessor =
               UpdateExecutionFactory.create(updates, ds);
@@ -76,7 +132,7 @@ public class TDBService {
   }
 
   public void insertModel(String graphUri, Model model) {
-    var triples = ModelUtils.toString(model, RDFLanguages.NTRIPLES);
+    var triples = writeToOutputStream(outputStream -> RDFDataMgr.write(outputStream, model, RDFFormat.NTRIPLES));
     String updateQuery = String.format("INSERT DATA { GRAPH <%s> { %s } }", graphUri, triples);
     executeUpdateQuery(updateQuery);
   }

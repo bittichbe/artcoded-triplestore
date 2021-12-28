@@ -9,12 +9,12 @@ import org.apache.camel.Header;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.commons.compress.utils.FileNameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import tech.artcoded.triplestore.sparql.ModelUtils;
 import tech.artcoded.triplestore.tdb.TDBService;
 
 import java.io.ByteArrayInputStream;
@@ -86,7 +86,8 @@ public class MigrationRouteBuilder extends RouteBuilder {
     }
 
     Lang lang = RDFLanguages.filenameToLang(fileName);
-    Model model = ModelUtils.toModel(new ByteArrayInputStream(file), lang);
+    var model = ModelFactory.createDefaultModel();
+    RDFDataMgr.read(model, new ByteArrayInputStream(file), lang);
     String graph = ofNullable(GRAPH_CACHE.getIfPresent(getBaseName(fileName))).orElseGet(() -> defaultGraph);
     tdbService.batchLoadData(graph, model);
     return UUID.randomUUID().toString();
