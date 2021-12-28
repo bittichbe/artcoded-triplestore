@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import com.google.common.io.FileBackedOutputStream;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.IOUtils;
 import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
@@ -102,9 +101,8 @@ public class TDBService {
   private String writeToOutputStream(Consumer<OutputStream> consumer) {
     try (var outputStream = new FileBackedOutputStream(THRESHOLD)) {
       consumer.accept(outputStream);
-      return IOUtils.toString(outputStream.asByteSource().read(), StandardCharsets.UTF_8.name());
+      return outputStream.asByteSource().asCharSource(StandardCharsets.UTF_8).read();
     }
-
   }
 
   private Lang guessLang(String contentType, Lang fallback) {
