@@ -16,6 +16,7 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.system.ThreadTxn;
 import org.apache.jena.system.Txn;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateProcessor;
@@ -28,7 +29,12 @@ import tech.artcoded.triplestore.sparql.SparqlResult;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -84,7 +90,21 @@ public class TDBService {
         throw new RuntimeException(exc);
       }
     };
-    return Txn.calculateRead(ds, _executeQuery);
+
+    return this.executeQueryTimeout(() -> Txn.calculateRead(ds, _executeQuery));
+  }
+
+  private SparqlResult executeQueryTimeout(Supplier<SparqlResult> supplier){
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<SparqlResult> future = executor.submit(supplier::get);
+    try {
+      return future.get(timeout, TimeUnit.SECONDS);
+    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+      future.cancel(true);
+      throw new RuntimeException(e);
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   private SparqlResult tryFormat(BiConsumer<Lang, OutputStream> consumer, String contentType, Lang fallback) {
