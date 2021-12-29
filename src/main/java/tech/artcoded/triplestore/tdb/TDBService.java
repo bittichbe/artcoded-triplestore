@@ -28,10 +28,8 @@ import tech.artcoded.triplestore.sparql.SparqlResult;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
@@ -89,20 +87,16 @@ public class TDBService {
         throw new RuntimeException(exc);
       }
     };
-
     return this.executeQueryTimeout(() -> Txn.calculateRead(ds, _executeQuery));
   }
 
   private SparqlResult executeQueryTimeout(Supplier<SparqlResult> supplier){
-    ExecutorService executor = Executors.newSingleThreadExecutor();
-    Future<SparqlResult> future = executor.submit(supplier::get);
+    CompletableFuture<SparqlResult> future = CompletableFuture.supplyAsync(supplier);
     try {
       return future.get(timeout, TimeUnit.SECONDS);
     } catch (TimeoutException | InterruptedException | ExecutionException e) {
       future.cancel(true);
       throw new RuntimeException(e);
-    } finally {
-      executor.shutdownNow();
     }
   }
 
