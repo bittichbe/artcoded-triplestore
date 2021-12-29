@@ -1,0 +1,22 @@
+spring:
+  cache:
+    jcache:
+      provider: org.ehcache.jsr107.EhcacheCachingProvider
+    cache-names:
+      - rate-limit-buckets
+    caffeine:
+      spec: maximumSize=1000000,expireAfterAccess=3600s
+bucket4j:
+  enabled: true
+  filters:
+    - cache-name: rate-limit-buckets
+      url: /public/sparql.*
+      http-response-body: "{ \"status\": 429, \"error\": \"Too Many Requests\", \"message\": \"You have exhausted your API Request Quota\" }"
+      rate-limits:
+        - bandwidths:
+            - capacity: ${BANDWIDTH_CAPACITY:5}
+              time: 1
+              unit: minutes
+              fixed-refill-interval: 1
+              fixed-refill-interval-unit: minutes
+

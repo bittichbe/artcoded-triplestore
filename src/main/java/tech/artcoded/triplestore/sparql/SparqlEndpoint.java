@@ -9,7 +9,6 @@ import org.apache.jena.update.UpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -31,7 +30,6 @@ import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 
 
 @Controller()
-@RequestMapping("/sparql")
 @ConfigurationProperties("application.security.sparql.update")
 @Slf4j
 public class SparqlEndpoint {
@@ -49,7 +47,17 @@ public class SparqlEndpoint {
     this.tdbService = tdbService;
   }
 
-  @RequestMapping(value = "",
+  @RequestMapping(value = "/public/sparql",
+                  method = {RequestMethod.GET, RequestMethod.POST})
+  public ResponseEntity<String> executePublicQuery(@RequestParam(value = "query",
+                                                                 required = false) String query,
+                                                   @RequestParam(value = "update",
+                                                                 required = false) String update,
+                                                   HttpServletRequest request) {
+    return executeQuery(query, update, request);
+  }
+
+  @RequestMapping(value = "/sparql",
                   method = {RequestMethod.GET, RequestMethod.POST})
   public ResponseEntity<String> executeQuery(@RequestParam(value = "query",
                                                            required = false) String query,

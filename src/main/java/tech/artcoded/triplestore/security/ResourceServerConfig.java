@@ -23,7 +23,7 @@ public class ResourceServerConfig extends WebSecurityConfigurerAdapter {
     http
             .csrf().disable()
             .authorizeRequests()
-            .antMatchers("/sparql/**").permitAll()
+            .antMatchers("/public/**").permitAll()
             .anyRequest().authenticated()
             .and()
             .oauth2ResourceServer()
