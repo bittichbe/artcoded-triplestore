@@ -6,7 +6,7 @@ then
   exit -1;
 fi
 
-releaseVersion=v$1
+releaseVersion=$1
 nextVersion=$2-SNAPSHOT
 
 echo "release" $releaseVersion ", next" $nextVersion
@@ -19,8 +19,8 @@ mvn release:clean
 git pull
 
 git checkout $releaseVersion
-docker build -t artcoded/triplestore:$releaseVersion .
-docker tag artcoded/triplestore:$releaseVersion artcoded:5000/artcoded/triplestore:$releaseVersion
-docker push artcoded:5000/artcoded/triplestore:$releaseVersion
+docker build -t artcoded/triplestore:v$releaseVersion .
+docker tag artcoded/triplestore:v$releaseVersion artcoded:5000/artcoded/triplestore:v$releaseVersion
+docker push artcoded:5000/artcoded/triplestore:v$releaseVersion
 
 git checkout main
