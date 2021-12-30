@@ -15,11 +15,14 @@ import java.util.stream.Collectors;
 public class RealmRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
   @Override
   public Collection<GrantedAuthority> convert(Jwt jwt) {
-    final Map<String, List<String>> realmAccess = (Map<String, List<String>>) jwt.getClaims().get("realm_access");
-    List<GrantedAuthority> roles = realmAccess.get("roles").stream()
-                                              .map(roleName -> "ROLE_" + roleName.toUpperCase())
-                                              .map(SimpleGrantedAuthority::new)
-                                              .collect(Collectors.toList());
-    return roles;
+    if (jwt.hasClaim("realm_access")) {
+
+      final Map<String, List<String>> realmAccess = jwt.getClaim("realm_access");
+      return realmAccess.get("roles").stream()
+                        .map(roleName -> "ROLE_" + roleName.toUpperCase())
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
+    }
+    return List.of();
   }
 }

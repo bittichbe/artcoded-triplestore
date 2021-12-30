@@ -17,4 +17,4 @@ WORKDIR /app
 
 COPY --from=builder /app/target/app.jar ./app.jar
 
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java -XX:+UseZGC ${JAVA_OPTS} -jar /app/app.jar"]
