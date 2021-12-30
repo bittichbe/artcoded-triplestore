@@ -20,6 +20,8 @@ sparql:
       directory: ${SPARQL_UPDATE_FAILURE_DIRECTORY:${application.basePath}/update-failure}
 
 spring:
+  application:
+    name: tdb-triplestore
   config:
     import:
       - ${SECURITY_CONFIG:classpath:config/security-disabled.yml}
