@@ -25,5 +25,6 @@ spring:
       - ${SECURITY_CONFIG:classpath:config/security-disabled.yml}
       - ${ARTEMIS_CONFIG:classpath:config/artemis-embedded.yml}
       - ${BUCKET_CONFIG:classpath:config/bucket.yml}
+      - ${ACTUATOR_CONFIG:classpath:config/actuator.yml}
 
 

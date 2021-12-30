@@ -24,6 +24,8 @@ public class ResourceServerConfig extends WebSecurityConfigurerAdapter {
             .csrf().disable()
             .authorizeRequests()
             .antMatchers("/public/**").permitAll()
+            .antMatchers("/actuator/prometheus/**")
+            .hasAnyRole("PROMETHEUS")
             .anyRequest().authenticated()
             .and()
             .oauth2ResourceServer()
