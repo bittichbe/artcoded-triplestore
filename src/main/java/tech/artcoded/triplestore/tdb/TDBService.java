@@ -8,6 +8,7 @@ import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Dataset;
+import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionDatasetBuilder;
 import org.apache.jena.rdf.model.Model;
@@ -17,8 +18,8 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.system.Txn;
+import org.apache.jena.update.UpdateExecution;
 import org.apache.jena.update.UpdateExecutionFactory;
-import org.apache.jena.update.UpdateProcessor;
 import org.apache.jena.update.UpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,6 @@ import static org.apache.jena.riot.resultset.ResultSetLang.RS_CSV;
 import static org.apache.jena.riot.resultset.ResultSetLang.RS_JSON;
 import static org.apache.jena.riot.resultset.ResultSetLang.RS_Text;
 import static org.apache.jena.riot.resultset.ResultSetLang.RS_XML;
-import static tech.artcoded.triplestore.sparql.QueryParserUtil.parseQuery;
 
 @Service
 @Slf4j
@@ -65,9 +65,8 @@ public class TDBService {
     this.ds = ds;
   }
 
-  public SparqlResult executeQuery(String query, String acceptHeader) {
+  public SparqlResult executeQuery(Query q, String acceptHeader) {
     Supplier<SparqlResult> _executeQuery = () -> {
-      var q = parseQuery(query);
       try (QueryExecution queryExecution = QueryExecutionDatasetBuilder.create()
                                                                        .query(q)
                                                                        .dataset(ds)
@@ -90,11 +89,12 @@ public class TDBService {
     return this.executeQueryTimeout(() -> Txn.calculateRead(ds, _executeQuery));
   }
 
-  private SparqlResult executeQueryTimeout(Supplier<SparqlResult> supplier){
+  private SparqlResult executeQueryTimeout(Supplier<SparqlResult> supplier) {
     CompletableFuture<SparqlResult> future = CompletableFuture.supplyAsync(supplier);
     try {
       return future.get(timeout, TimeUnit.SECONDS);
-    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+    }
+    catch (TimeoutException | InterruptedException | ExecutionException e) {
       future.cancel(true);
       throw new RuntimeException(e);
     }
@@ -112,7 +112,7 @@ public class TDBService {
 
   @SneakyThrows
   private InputStream writeToOutputStream(Consumer<OutputStream> consumer) {
-    try (var outputStream = new FileBackedOutputStream(THRESHOLD)) {
+    try (var outputStream = new FileBackedOutputStream(THRESHOLD, true)) {
       consumer.accept(outputStream);
       return outputStream.asByteSource().openStream();
     }
@@ -133,12 +133,10 @@ public class TDBService {
 
   @SneakyThrows
   public void executeUpdateQuery(String updateQuery) {
-    Txn.executeWrite(ds, () -> {
-      UpdateRequest updates = QueryParserUtil.parseUpdate(updateQuery);
-      UpdateProcessor updateProcessor =
-              UpdateExecutionFactory.create(updates, ds);
-      updateProcessor.execute();
-    });
+    Txn.executeWrite(ds, () -> QueryParserUtil.parseUpdate(updateQuery)
+                                              .map(u -> u.query() instanceof UpdateRequest updates ? updates : null)
+                                              .map(u -> UpdateExecutionFactory.create(u, ds))
+                                              .ifPresent(UpdateExecution::execute));
 
   }
 

@@ -1,7 +1,6 @@
 package tech.artcoded.triplestore.sparql.route;
 
 import org.apache.camel.Body;
-import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
@@ -14,7 +13,6 @@ import static tech.artcoded.triplestore.sparql.route.Constants.CORRELATION_ID;
 import static tech.artcoded.triplestore.sparql.route.Constants.HEADER_TITLE;
 import static tech.artcoded.triplestore.sparql.route.Constants.HEADER_TYPE;
 import static tech.artcoded.triplestore.sparql.route.Constants.NOTIFICATION_ENDPOINT;
-import static tech.artcoded.triplestore.sparql.route.Constants.SYNC_FILE_TRIPLESTORE;
 import static tech.artcoded.triplestore.sparql.route.Constants.UPDATE_QUERY_TRIPLESTORE;
 
 @Component
@@ -42,7 +40,7 @@ public class UpdateRouteBuilder extends RouteBuilder {
     from("jms:queue:sparql-update")
             .routeId("UpdateRoute::EntryPoint")
             .setProperty("oldBody", body())
-            .log(LoggingLevel.DEBUG, "receiving update query:\n ${body}")
+            .log(LoggingLevel.INFO, "receiving update query:\n${body}")
             .bean(() -> this, "process")
             .log(LoggingLevel.DEBUG, "update done")
             .setProperty(HEADER_TITLE, simple("Update query has been executed to the triplestore"))

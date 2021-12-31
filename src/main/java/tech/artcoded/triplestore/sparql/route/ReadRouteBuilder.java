@@ -15,10 +15,9 @@ public class ReadRouteBuilder extends RouteBuilder {
             .maximumRedeliveries(0)
             .transform(exceptionMessage())
             .log(LoggingLevel.DEBUG, "an error occured: ${body}");
-
     from("jms:queue:sparql-read")
             .routeId("ReadRoute::EntryPoint")
-            .log(LoggingLevel.INFO, "receiving query:\n ${body}");
+            .log(LoggingLevel.INFO, "receiving query:\n${body}");
     ;
   }
 }
