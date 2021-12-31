@@ -25,8 +25,8 @@ import org.springframework.stereotype.Service;
 import tech.artcoded.triplestore.sparql.QueryParserUtil;
 import tech.artcoded.triplestore.sparql.SparqlResult;
 
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -111,10 +111,10 @@ public class TDBService {
   }
 
   @SneakyThrows
-  private String writeToOutputStream(Consumer<OutputStream> consumer) {
+  private InputStream writeToOutputStream(Consumer<OutputStream> consumer) {
     try (var outputStream = new FileBackedOutputStream(THRESHOLD)) {
       consumer.accept(outputStream);
-      return outputStream.asByteSource().asCharSource(StandardCharsets.UTF_8).read();
+      return outputStream.asByteSource().openStream();
     }
   }
 

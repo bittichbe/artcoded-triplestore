@@ -4,6 +4,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.io.IOUtils;
 import org.apache.jena.query.Query;
 import org.apache.jena.update.UpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,12 +18,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import tech.artcoded.triplestore.tdb.TDBService;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Set;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static org.springframework.http.HttpHeaders.ACCEPT;
@@ -49,21 +52,21 @@ public class SparqlEndpoint {
 
   @RequestMapping(value = "/public/sparql",
                   method = {RequestMethod.GET, RequestMethod.POST})
-  public ResponseEntity<String> executePublicQuery(@RequestParam(value = "query",
-                                                                 required = false) String query,
-                                                   @RequestParam(value = "update",
-                                                                 required = false) String update,
-                                                   HttpServletRequest request) {
+  public ResponseEntity<StreamingResponseBody> executePublicQuery(@RequestParam(value = "query",
+                                                                                required = false) String query,
+                                                                  @RequestParam(value = "update",
+                                                                                required = false) String update,
+                                                                  HttpServletRequest request) {
     return executeQuery(query, update, request);
   }
 
   @RequestMapping(value = "/sparql",
                   method = {RequestMethod.GET, RequestMethod.POST})
-  public ResponseEntity<String> executeQuery(@RequestParam(value = "query",
-                                                           required = false) String query,
-                                             @RequestParam(value = "update",
-                                                           required = false) String update,
-                                             HttpServletRequest request) {
+  public ResponseEntity<StreamingResponseBody> executeQuery(@RequestParam(value = "query",
+                                                                          required = false) String query,
+                                                            @RequestParam(value = "update",
+                                                                          required = false) String update,
+                                                            HttpServletRequest request) {
     String accept = request.getHeader(ACCEPT);
 
     if (isNotEmpty(query)) {
@@ -74,7 +77,7 @@ public class SparqlEndpoint {
     }
   }
 
-  ResponseEntity<String> tryParseExecute(String query, String accept) {
+  ResponseEntity<StreamingResponseBody> tryParseExecute(String query, String accept) {
     try {
       if (isNotEmpty(query)) {
         var operation = QueryParserUtil.parseOperation(query);
@@ -83,7 +86,8 @@ public class SparqlEndpoint {
         }
         else if (operation instanceof UpdateRequest) {
           if (!canUpdate()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You cannot perform this action");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                 .body(out -> IOUtils.write("You cannot perform this action", out, UTF_8));
           }
           return executeUpdate(query);
         }
@@ -91,23 +95,27 @@ public class SparqlEndpoint {
       return ResponseEntity.ok().build(); // just a ping
     }
     catch (Exception exc) {
-      return ResponseEntity.status(400).body("error: %s".formatted(exc.getMessage()));
+      return ResponseEntity.status(400).body((out) -> IOUtils.write("{error: '%s'}".formatted(exc.getMessage()), out, UTF_8));
     }
   }
 
-  ResponseEntity<String> executeRead(String query, String accept) {
+  ResponseEntity<StreamingResponseBody> executeRead(String query, String accept) {
     this.producerTemplate.sendBodyAndHeader("jms:queue:sparql-read", ExchangePattern.InOnly, query,
                                             "accept", accept);
     var response = tdbService.executeQuery(query, accept);
     return ResponseEntity.status(200).header(CONTENT_TYPE, response.getContentType())
-                         .body(response.getBody());
+                         .body((out) -> {
+                           try (var is = response.getBody()) {
+                             IOUtils.copyLarge(is, out);
+                           }
+                         });
   }
 
-  ResponseEntity<String> executeUpdate(String update) {
+  ResponseEntity<StreamingResponseBody> executeUpdate(String update) {
 
     this.producerTemplate.sendBody("jms:queue:sparql-update", ExchangePattern.InOnly, update);
     return ResponseEntity.status(200)
-                         .body("processing update");
+                         .body((out) -> IOUtils.write("processing update", out, UTF_8));
   }
 
   boolean canUpdate() {
