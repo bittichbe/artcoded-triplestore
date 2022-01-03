@@ -11,10 +11,12 @@ COPY ./src ./src
 
 RUN mvn package -DskipTests
 
-FROM openjdk:17-alpine
+FROM ibm-semeru-runtimes:open-17-jre
+
+RUN mkdir /opt/shareclasses
 
 WORKDIR /app
 
 COPY --from=builder /app/target/app.jar ./app.jar
 
-ENTRYPOINT ["sh", "-c", "java -XX:+UseZGC ${JAVA_OPTS} -jar /app/app.jar"]
+ENTRYPOINT [ "java", "-Xshareclasses:cacheDir=/opt/shareclasses", "-jar","/app/app.jar"]
